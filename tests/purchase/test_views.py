@@ -1,32 +1,46 @@
-from django.test import TestCase
-from purchase.views import PurchaseOrderAPIView, PurchaseOrderAcknowledgeAPIView
-from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
-from rest_framework import status
+from __future__ import annotations
+
 from datetime import timedelta
-from django.utils import timezone
-from unittest.mock import Mock, patch
-from purchase.models import PurchaseOrder
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework import status
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
+from rest_framework.test import APIRequestFactory
+from rest_framework.test import force_authenticate
+
+from purchase.models import PurchaseOrder
+from purchase.views import PurchaseOrderAcknowledgeAPIView
+from purchase.views import PurchaseOrderAPIView
 from vendor.models import Vendor
-from django_mock_queries.query import MockSet, MockModel
+
 
 class TestPurchaseOrderAPIView(TestCase):
     view = PurchaseOrderAPIView
-    
+
     def setUp(self):
         self.client = APIClient()
         # Create a user and authenticate the client
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpassword',
+        )
         self.token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
-        self.vendor = Vendor.objects.create(name='Test Vendor', contact_details='1234567890', address='Test Address', vendor_code='123')
+        self.vendor = Vendor.objects.create(
+            name='Test Vendor', contact_details='1234567890', address='Test Address', vendor_code='123',
+        )
 
     @patch('purchase.views.PurchaseOrder.objects.get')
     def test_get_purchase_order(self, mock_purchaseorder_get):
         # Create a PurchaseOrder for testing
         # purchase_order = PurchaseOrder(po_number='PO123', vendor=Vendor(), order_date=timezone.now(), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now())
-        mock_purchaseorder_get.return_value = PurchaseOrder(po_number='PO123', vendor=Vendor(), order_date=timezone.now(), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now())
+        mock_purchaseorder_get.return_value = PurchaseOrder(
+            po_number='PO123', vendor=Vendor(), order_date=timezone.now(
+            ), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now(),
+        )
         response = self.client.get('/api/purchase_orders/PO123/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('details', response.data)
@@ -34,8 +48,14 @@ class TestPurchaseOrderAPIView(TestCase):
 
     def test_get_purchase_orders_list(self):
         # Create some PurchaseOrders for testing
-        PurchaseOrder.objects.create(po_number='PO1', vendor=Vendor.objects.create(), order_date=timezone.now(), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now())
-        PurchaseOrder.objects.create(po_number='PO2', vendor=Vendor.objects.create(), order_date=timezone.now(), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now())
+        PurchaseOrder.objects.create(
+            po_number='PO1', vendor=Vendor.objects.create(), order_date=timezone.now(
+            ), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now(),
+        )
+        PurchaseOrder.objects.create(
+            po_number='PO2', vendor=Vendor.objects.create(), order_date=timezone.now(
+            ), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now(),
+        )
 
         response = self.client.get('/api/purchase_orders/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -52,9 +72,11 @@ class TestPurchaseOrderAPIView(TestCase):
             'items': {},
             'quantity': 10,
             'status': 'pending',
-            'issue_date': '2024-05-20'
+            'issue_date': '2024-05-20',
         }
-        response = self.client.post('/api/purchase_orders/', data, format='json')
+        response = self.client.post(
+            '/api/purchase_orders/', data, format='json',
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['po_number'], 'PO123')
 
@@ -73,21 +95,29 @@ class TestPurchaseOrderAPIView(TestCase):
             'status': 'completed',
             'issue_date': '2024-05-10',
         }
-        mock_purchaseorder_get.return_value = PurchaseOrder(po_number='PO123', vendor=Vendor(), order_date=timezone.now(), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now())
-        response = self.client.put('/api/purchase_orders/PO123/', data, format='json')
+        mock_purchaseorder_get.return_value = PurchaseOrder(
+            po_number='PO123', vendor=Vendor(), order_date=timezone.now(
+            ), delivery_date=timezone.now() + timedelta(days=7), items={}, quantity=10, status='pending', issue_date=timezone.now(),
+        )
+        response = self.client.put(
+            '/api/purchase_orders/PO123/', data, format='json',
+        )
         # response = self.view(request, po_id='PO123')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['vendor'], '123')
         self.assertEqual(response.data['status'], 'completed')
 
+
 class PurchaseOrderAcknowledgeAPIViewTestCase(TestCase):
     def setUp(self):
         self.factory = APIRequestFactory()
         self.view = PurchaseOrderAcknowledgeAPIView.as_view()
-        self.vendor = Vendor.objects.create(name="Test Vendor")
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
+        self.vendor = Vendor.objects.create(name='Test Vendor')
+        self.user = User.objects.create_user(
+            username='testuser', password='testpassword',
+        )
         self.purchase_order = PurchaseOrder.objects.create(
-            po_number="PO-001",
+            po_number='PO-001',
             issue_date=timezone.now() - timedelta(days=1),
             vendor=self.vendor,
             delivery_date=timezone.now(),
@@ -99,38 +129,38 @@ class PurchaseOrderAcknowledgeAPIViewTestCase(TestCase):
         self.purchase_order.acknowledgment_date = timezone.now()
         self.purchase_order.save()
 
-        url = f"/purchase-orders/{self.purchase_order.po_number}/acknowledge/"
+        url = f'/purchase-orders/{self.purchase_order.po_number}/acknowledge/'
         request = self.factory.post(url)
         force_authenticate(request, user=self.user)
         response = self.view(request, po_id=self.purchase_order.po_number)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["message"],
-            "This purchase order has already been acknowledged."
+            response.data['message'],
+            'This purchase order has already been acknowledged.',
         )
 
     def test_nonexistent_purchase_order(self):
-        url = "/purchase-orders/invalid-po-number/acknowledge/"
+        url = '/purchase-orders/invalid-po-number/acknowledge/'
         request = self.factory.post(url)
         force_authenticate(request, user=self.user)
-        response = self.view(request, po_id="invalid-po-number")
+        response = self.view(request, po_id='invalid-po-number')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(
-            response.data["details"],
-            "Purchase Order object does not exist."
+            response.data['details'],
+            'Purchase Order object does not exist.',
         )
 
     def test_generic_exception_handling(self):
         # Simulate an unexpected exception during processing
-        url = f"/purchase-orders/{self.purchase_order.po_number}/acknowledge/"
+        url = f'/purchase-orders/{self.purchase_order.po_number}/acknowledge/'
         request = self.factory.post(url)
         force_authenticate(request, user=self.user)
         response = self.view(request, po_id=self.purchase_order.po_number)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.data["details"],
-            "Some Error Occurred."
+            response.data['details'],
+            'Some Error Occurred.',
         )
